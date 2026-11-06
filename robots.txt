@@ -1,0 +1,7 @@
+# Everything may be crawled. Pages that must stay out of search results (sign-in, account, script demos,
+# the error page) say so themselves with <meta name="robots" content="noindex">, which a crawler can only
+# read if it is allowed to fetch the page. This file is not access control.
+User-agent: *
+Allow: /
+
+Sitemap: https://venerastudios.top/sitemap.xml
