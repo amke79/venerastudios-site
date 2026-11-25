@@ -86,7 +86,7 @@ const server = http.createServer(async (req, res) => {
       });
       return reply(res, result.status, await result.json());
     }
-    const {action, key, id, token, name, to, signal, create, channel, message, after, voice, muted, deafened, holdInbox, sharing, watching} = data;
+    const {action, key, id, token, name, to, signal, create, channel, message, after, voice, muted, deafened, holdInbox, sharing, watching, rejoinKey} = data;
     const suppliedOwner = data.owner;
     const isHost = hosted
       ? typeof suppliedOwner === 'string' && /^[a-f0-9]{64}$/.test(suppliedOwner) &&
@@ -98,8 +98,12 @@ const server = http.createServer(async (req, res) => {
     if (action === 'join') {
       if (create && !isHost) return reply(res, 403, {});
       if (!room && !create && !hosted) return reply(res, 404, {});
-      if (create && room) {
-        for (const [id, member] of room) if (member.admin) room.delete(id);
+      const admin = Boolean(create && isHost);
+      const stableKey = typeof rejoinKey === 'string' && /^[a-f0-9]{32}$/.test(rejoinKey) ? rejoinKey : null;
+      if (room && (admin || stableKey)) {
+        for (const [id, member] of room) {
+          if (member.admin === admin && (admin || member.rejoinKey === stableKey)) room.delete(id);
+        }
       }
       if ((!room && rooms.size >= 64) ||
           (room && (room.size >= 6 || (!create && [...room.values()].filter(member => !member.admin).length >= 5))))
@@ -112,8 +116,7 @@ const server = http.createServer(async (req, res) => {
       }
       const id = randomUUID();
       const token = randomUUID();
-      const admin = Boolean(create && isHost);
-      room.set(id, {token, admin, name:String(name || 'Igrač').trim().slice(0,24) || 'Igrač',
+      room.set(id, {token, admin, rejoinKey:stableKey, name:String(name || 'Igrač').trim().slice(0,24) || 'Igrač',
         seen:Date.now(), inbox:[], voice:null, muted:false, deafened:false, sharing:null, watching:null});
       return reply(res, 200, {id, token, admin});
     }
